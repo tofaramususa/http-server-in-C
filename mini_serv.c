@@ -30,8 +30,8 @@ void fatal_error(char *message)
 	else
 	{
 		write(2, "Fatal Error\n", 12);
-		exit(1);
 	}
+	exit(1);
 }
 
 void send_to_all(int sender)
