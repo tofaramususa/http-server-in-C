@@ -21,19 +21,19 @@ int max_fds = 0;
 int tracker = 0; 
 t_client clients[2040];
 
-//function to send messages to all clients
 //function to send error message
 void fatal_error(char *message)
 {
 	if(message)
-		write(2, message, strlen(message));
-	else
-	{
-		write(2, "Fatal Error\n", 12);
-	}
-	exit(1);
+	write(2, message, strlen(message));
+else
+{
+	write(2, "Fatal Error\n", 12);
+}
+exit(1);
 }
 
+//function to send messages to all clients
 void send_to_all(int sender)
 {
 	for(int fd = 0; fd <= max_fds; fd++)
@@ -45,6 +45,9 @@ void send_to_all(int sender)
 		}
 	}
 }
+
+// extracts the message up to the first newline character and updates the
+//  buffer to contain the remaining content after the newline.
 
 int extract_message(char **buf, char **msg)
 {
@@ -136,41 +139,42 @@ int main(int ac, char **av) {
 		if(select(max_fds + 1, &read_set, &write_set, 0, 0) == -1) continue; //this gets those ready to read and write takes max_fds, read and write sets and 0 then -1
 		for(int fd = 0; fd <= max_fds; fd++) //loop through the fds
 		{
-			if(!FD_ISSET(fd, &read_set)) //look for the one that is set to read if not then ignore it
-				continue;
-			if(fd == sockfd) //if its the sockfd
+			if(FD_ISSET(fd, &read_set)) //Do not use 'continue', it didnt work in the exam
 			{
-				len = sizeof(cli);
-				connfd = accept(sockfd, (struct sockaddr *)&cli, &len);
-				if(connfd == -1) continue;
-				if(connfd > max_fds) max_fds = connfd; //increase max fds
-				clients[connfd].id = tracker++; //set the client id
-				FD_SET(connfd, &current_set); //add fd to the current set
-				sprintf(send_buffer, "server: client %d just arrived\n", clients[connfd].id); //save message to a buffer
-				send_to_all(connfd); //send message to everyone
-				break;
-			}
-			else
-			{
-				int receive_bytes = recv(fd, receiver_buffer, sizeof(receiver_buffer), 0); //this sets message to receiver
-				if(receive_bytes <= 0) //this means there is no connection anymore so remove and notify everyone
+				if(fd == sockfd) //if its the sockfd
 				{
-					sprintf(send_buffer, "server: client %d just left/n", clients[fd].id); //create message
-					send_to_all(fd); //send to all
-					FD_CLR(fd, &current_set); //remove from fd set
-					close(fd); //close the fd connection
+					len = sizeof(cli);
+					connfd = accept(sockfd, (struct sockaddr *)&cli, &len);
+					if(connfd == -1) continue;
+					if(connfd > max_fds) max_fds = connfd; //increase max fds
+					clients[connfd].id = tracker++; //set the client id
+					FD_SET(connfd, &current_set); //add fd to the current set
+					sprintf(send_buffer, "server: client %d just arrived\n", clients[connfd].id); //save message to a buffer
+					send_to_all(connfd); //send message to everyone
 					break;
 				}
-				else {
-					char *temp_message; //temporary message store
-
-					receiver_buffer[receive_bytes] = '\0'; //put an end to receiving string
-					clients[fd].message = str_join(clients[fd].message, receiver_buffer); //join the client message with receiving message
-					while(extract_message(&clients[fd].message, &temp_message)) //extract messages and send one by one
+				else
+				{
+					int receive_bytes = recv(fd, receiver_buffer, sizeof(receiver_buffer), 0); //this sets message to receiver
+					if(receive_bytes <= 0) //this means there is no connection anymore so remove and notify everyone
 					{
-						sprintf(send_buffer, "client %d: %s\n", clients[fd].id, temp_message); //add to sender buffer
+						sprintf(send_buffer, "server: client %d just left/n", clients[fd].id); //create message
 						send_to_all(fd); //send to all
-						free(temp_message); //free the message buffer
+						FD_CLR(fd, &current_set); //remove from fd set
+						close(fd); //close the fd connection
+						break;
+					}
+					else {
+						char *temp_message; //temporary message store
+
+						receiver_buffer[receive_bytes] = '\0'; //put an end to receiving string
+						clients[fd].message = str_join(clients[fd].message, receiver_buffer); //join the client message with receiving message
+						while(extract_message(&clients[fd].message, &temp_message)) //extract messages and send one by one
+						{
+							sprintf(send_buffer, "client %d: %s\n", clients[fd].id, temp_message); //add to sender buffer
+							send_to_all(fd); //send to all
+							free(temp_message); //free the message buffer
+						}
 					}
 				}
 			}
