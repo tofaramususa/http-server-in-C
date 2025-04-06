@@ -158,7 +158,7 @@ int main(int ac, char **av) {
 					int receive_bytes = recv(fd, receiver_buffer, sizeof(receiver_buffer), 0); //this sets message to receiver
 					if(receive_bytes <= 0) //this means there is no connection anymore so remove and notify everyone
 					{
-						sprintf(send_buffer, "server: client %d just left/n", clients[fd].id); //create message
+						sprintf(send_buffer, "server: client %d just left\n", clients[fd].id); //create message
 						send_to_all(fd); //send to all
 						FD_CLR(fd, &current_set); //remove from fd set
 						close(fd); //close the fd connection
